@@ -114,14 +114,27 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
   }
 
   /**
-   * The shell frame laid out as `sidebar | center | rightbar`, the overlay layer
-   * the frame renders above them, and the left column that keeps its own height.
+   * The shell frame that lays out the left column, the content and the right
+   * column, the overlay layer the frame renders above them, and the left column
+   * that keeps its own height. Which child is the left column depends on the
+   * shell — a shell may lead the frame with a caption strip — so it is found by
+   * position: the full-height child on the frame's left edge.
    */
   function shellFrame() {
     const layer = document.querySelector('[data-shell-overlay]');
     const frame = layer?.parentElement;
     if (!layer || !frame) return null;
-    return {layer, frame, sidebar: frame.firstElementChild === layer ? null : frame.firstElementChild};
+    const bounds = frame.getBoundingClientRect();
+    let sidebar = null;
+    let width = -1;
+    for (const child of frame.children) {
+      if (child === layer) continue;
+      const rect = child.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height < bounds.height - 1) continue;
+      if (Math.abs(rect.left - bounds.left) > 1) continue;
+      if (rect.width > width) {sidebar = child; width = rect.width;}
+    }
+    return {layer, frame, sidebar};
   }
 
   const TERMINAL_ICON = h('svg', {
@@ -189,7 +202,12 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     React.useEffect(() => {
       const shell = shellFrame();
       if (!shell) return undefined;
-      const measure = () => setOffset(shell.sidebar ? Math.round(shell.sidebar.getBoundingClientRect().width) : 0);
+      const measure = () => {
+        const left = shell.sidebar
+          ? Math.round(shell.sidebar.getBoundingClientRect().right - shell.frame.getBoundingClientRect().left)
+          : 0;
+        setOffset(left);
+      };
       measure();
       const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
       if (shell.sidebar) resize?.observe(shell.sidebar);
@@ -200,14 +218,17 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     }, []);
 
     // Reserve the strip the panel occupies, so the composer and the right column
-    // stay in view instead of hiding behind it.
+    // stay in view instead of hiding behind it. Only the children that reach the
+    // frame's bottom edge share that strip; anything above it keeps its height.
     React.useEffect(() => {
       if (!open) return undefined;
       const shell = shellFrame();
       if (!shell) return undefined;
+      const bottom = shell.frame.getBoundingClientRect().bottom;
       const reserved = [];
       for (const child of shell.frame.children) {
         if (child === shell.layer || child === shell.sidebar) continue;
+        if (child.getBoundingClientRect().bottom < bottom - 1) continue;
         child.style.paddingBottom = `${height}px`;
         reserved.push(child);
       }
