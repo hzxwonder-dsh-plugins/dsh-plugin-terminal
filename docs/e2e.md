@@ -1,18 +1,22 @@
 # Verification Scenarios
 
-## Terminal panel
+## Terminal dock
 
-1. Open a Session and confirm the tab strip appears under the composer.
-2. Press `+` on the local target and confirm a shell prompt renders and accepts
-   typing, including a fullscreen TUI such as `vim`.
+1. Open a Session and confirm the terminal toggle sits with the Session header's
+   right-aligned utilities. Press it and confirm the dock opens along the bottom
+   of the frame, from the right edge of the left column to the window edge, with
+   the composer and any open right column still visible above it.
+2. Confirm the first open starts a terminal on the default target and renders a
+   shell prompt that accepts typing, including a fullscreen TUI such as `vim`.
 3. Open a second terminal and switch between the tabs; confirm each keeps its
    own screen and scrollback.
 4. Drag the top edge and confirm the PTY width follows the container.
-5. Reload the page, reopen the panel, and confirm the sessions are still listed
+5. Reload the page, reopen the dock, and confirm the sessions are still listed
    and reattach to their output.
 6. Select an allow-listed SSH connection as the target and confirm the new
    terminal starts from the bound workspace root.
-7. Collapse the panel, confirm the PTY keeps running, and expand it again.
+7. Press the header toggle, confirm the dock closes and releases the strip while
+   the PTY keeps running, then open it again.
 8. Close one terminal and confirm it disappears from the tab strip and from
    `remote_terminal_list`.
 

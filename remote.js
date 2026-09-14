@@ -71,6 +71,20 @@ export function buildSshArgv(program, host, cwd) {
   return argv;
 }
 
+/**
+ * The local shell argv confined by the Session's own sandbox policy. A panel
+ * terminal is not an Agent terminal, so the official terminal backends cannot
+ * own it; this mirrors their confinement step instead of spawning an
+ * unconfined shell behind the policy's back.
+ */
+export function localShellArgv(ctx, program, policy) {
+  const argv = [program, ...(process.platform === 'win32' ? ['-NoLogo'] : ['-i'])];
+  if (policy === undefined || policy.mode === 'danger-full-access') return argv;
+  const sandbox = ctx.get?.('sandbox');
+  if (sandbox === undefined) throw new Error('TERMINAL_SANDBOX_UNAVAILABLE');
+  return sandbox.confine(argv, {...policy, mode: policy.mode}).argv;
+}
+
 function utf8Tail(value, maxBytes) {
   if (encoder.encode(value).byteLength <= maxBytes) return {value, truncated: false};
   const chars = Array.from(value);
@@ -417,7 +431,8 @@ export class RemoteTerminalManager {
     if (this.disposed) throw new Error('REMOTE_TERMINAL_DISPOSED');
     const shell = process.platform === 'win32' ? 'pwsh' : process.env.SHELL || '/bin/sh';
     const program = await this.ctx.subprocess.resolveExecutable(shell, undefined, signal);
-    const terminal = await this.ctx.subprocess.spawnTerminal({argv: [program, ...(process.platform === 'win32' ? ['-NoLogo'] : ['-i'])], cwd: owner.session?.header?.cwd ?? homedir(), rows: this.config.rows, cols: this.config.cols, graceMs: this.config.graceMs, signal});
+    const argv = localShellArgv(this.ctx, program, this.ctx.get?.('sandboxPolicy')?.resolve({session: owner.session}));
+    const terminal = await this.ctx.subprocess.spawnTerminal({argv, cwd: owner.session?.header?.cwd ?? homedir(), rows: this.config.rows, cols: this.config.cols, graceMs: this.config.graceMs, signal});
     const session = new RemoteTerminalSession(terminal, this.config);
     const id = `local-pty-${++this.nextId}`;
     const record = {id, owner, host: 'localhost', cwd: owner.session?.header?.cwd, session};

@@ -1,16 +1,19 @@
 # DSH Terminal Plugin
 
-`dsh-plugin-terminal` gives DeepSeek Harness complete terminal capability: an
-interactive terminal panel docked under the composer, plus local and remote PTY
-tools an agent can call directly. The panel and the tools share one PTY manager,
-and every session is bound to the owner that created it, so another owner cannot
-read or operate a session even when it knows the `sessionId`.
+`dsh-plugin-terminal` gives DeepSeek Harness complete terminal capability: a
+terminal toggle in the Session header that opens an interactive panel along the
+bottom of the frame, plus local and remote PTY tools an agent can call directly.
+The panel and the tools share one PTY manager, and every session is bound to the
+owner that created it, so another owner cannot read or operate a session even
+when it knows the `sessionId`.
 
 ## Features
 
-- Dock panel: a resident terminal under the Session composer with one tab strip.
-  Click a tab to switch, click it again to collapse, and use the new, interrupt,
-  close, and collapse controls on the right. The top edge drags to resize.
+- Bottom dock: the toggle in the Session header opens one panel across the full
+  width right of the left column, pinned to the bottom of the frame, and pushes
+  the composer and the right column up so both stay visible. The top edge drags
+  to resize, the tab strip switches between terminals, and the new, interrupt,
+  close, and collapse controls sit on the right.
 - Interactive terminal: xterm.js rendering with direct keyboard input,
   ANSI/UTF-8, cursor addressing and fullscreen TUIs, scrollback, and size
   synchronization. `Ctrl/Cmd+Shift+C` copies and `Ctrl/Cmd+Shift+V` pastes.
@@ -63,16 +66,25 @@ The panel ships its xterm asset as `assets/terminal.js` and
 `assets/terminal.css`. Run `npm run build` after changing `client.js` or the
 xterm versions; `prepack` runs the same step.
 
-## The terminal panel
+## The terminal dock
 
-Once a Session is open, the terminal tab strip appears under the composer. `+`
-creates a terminal on the current target: the target selector lists `本机` and
+The terminal toggle in the Session header opens the dock: it spans from the right
+edge of the left column to the window edge, sits on the bottom of the frame, and
+reserves its strip so the composer and any open right column stay visible. The
+same toggle collapses it again.
+
+`+` creates a terminal on the current target: the target selector lists `本机` and
 every allow-listed SSH connection. A dot on a tab means the session is still
-running; a grey dot means it exited. Panel state (expanded, height, target, and
-tabs per Session) is stored in the browser only.
+running; a grey dot means it exited. Open state, height, target, and the current
+tab are stored in the browser only.
 
-The panel and the agent tools share the terminal manager but not their owners:
-panel terminals belong to the Session, agent terminals belong to the Agent.
+A local dock terminal is wrapped by the current Session's sandbox policy before it
+is spawned, matching the mode the Session shows. A policy that needs a sandbox
+provider this deployment does not have fails with `TERMINAL_SANDBOX_UNAVAILABLE`
+instead of falling back to an unconfined shell.
+
+The dock and the agent tools share the terminal manager but not their owners:
+dock terminals belong to the Session, agent terminals belong to the Agent.
 Both carry `local-pty-` or `remote-pty-` ids and cannot cross owners.
 
 ## Local sessions

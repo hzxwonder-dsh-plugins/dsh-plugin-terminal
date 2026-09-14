@@ -125,9 +125,15 @@ test('the panel fences stale workspaces, unknown sessions and read-only sessions
     return {status: response.status, body: await response.json()};
   };
   const workspaceKey = (await call({action: 'workspace'})).body.key;
-  assert.equal((await call({action: 'listTerminals', workspaceKey: 'stale'})).status, 409);
-  assert.equal((await call({action: 'listTerminals', workspaceKey: 'stale'})).body.error, 'TERMINAL_WORKSPACE_CHANGED');
-  assert.equal((await call({action: 'listTerminals'})).status, 409);
+  // Reads stay available while the key is stale, so a pane can still show what
+  // it already owns; every mutation is fenced by the observed key.
+  assert.equal((await call({action: 'listTerminals', workspaceKey: 'stale'})).status, 200);
+  const stale = await call({action: 'openTerminal'});
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.error, 'TERMINAL_WORKSPACE_CHANGED');
+  const staleWrite = await call({action: 'writeTerminal', workspaceKey: 'stale', terminalId: 'local-pty-1', text: 'x'});
+  assert.equal(staleWrite.status, 409);
+  assert.equal(staleWrite.body.error, 'TERMINAL_WORKSPACE_CHANGED');
   assert.equal((await fixture.routes.get('/api/dsh-terminal')(new Request('http://localhost', {method: 'POST', body: JSON.stringify({sessionId: 'other', action: 'workspace'})}))).status, 400);
   fixture.services.sandboxPolicy = {resolve: () => ({mode: 'read-only'})};
   assert.equal((await call({action: 'listTerminals', workspaceKey: workspaceFor(fixture.ctx, session).key})).status, 200);
@@ -165,6 +171,44 @@ test('panel terminals are owned by the Session and closed on session and plugin 
   assert.deepEqual((await call(session, 'listTerminals')).body, []);
   await disposePlugin();
   assert.deepEqual(fixture.terminated, [fixture.spawned[0].pid, fixture.spawned[1].pid]);
+});
+
+test('a panel local terminal runs confined by the Session sandbox policy', async () => {
+  const fixture = context();
+  const session = {id: 'session-sandbox', header: {cwd: '/local/project'}};
+  fixture.ctx.sessions = {get: id => id === session.id ? session : undefined};
+  fixture.ctx.subprocess.resolveExecutable = async program => program;
+  const confined = [];
+  fixture.services.sandboxPolicy = {resolve: () => ({mode: 'workspace-write', workspaceRoot: '/local/project', sessionId: session.id})};
+  fixture.services.sandbox = {confine(argv, policy) {
+    confined.push({argv, policy});
+    return {argv: ['/usr/bin/sandbox-exec', '-p', 'profile', ...argv]};
+  }};
+  const argv = [];
+  const spawnTerminal = fixture.ctx.subprocess.spawnTerminal;
+  fixture.ctx.subprocess.spawnTerminal = async spec => {argv.push(spec.argv); return spawnTerminal(spec);};
+  apply(fixture.ctx, {startupWaitMs: 1});
+  const response = await fixture.routes.get('/api/dsh-terminal')(new Request('http://localhost', {method: 'POST', body: JSON.stringify({
+    sessionId: session.id, action: 'openTerminal', workspaceKey: workspaceFor(fixture.ctx, session).key,
+  })}));
+  assert.equal(response.status, 200, await response.text());
+  assert.equal(confined.length, 1);
+  assert.equal(confined[0].policy.mode, 'workspace-write');
+  assert.equal(confined[0].policy.workspaceRoot, '/local/project');
+  assert.deepEqual(argv[0].slice(0, 3), ['/usr/bin/sandbox-exec', '-p', 'profile']);
+});
+
+test('a panel local terminal fails closed without a sandbox provider', async () => {
+  const fixture = context();
+  const session = {id: 'session-no-sandbox', header: {cwd: '/local/project'}};
+  fixture.ctx.sessions = {get: id => id === session.id ? session : undefined};
+  fixture.services.sandboxPolicy = {resolve: () => ({mode: 'workspace-write', workspaceRoot: '/local/project'})};
+  apply(fixture.ctx, {startupWaitMs: 1});
+  const response = await fixture.routes.get('/api/dsh-terminal')(new Request('http://localhost', {method: 'POST', body: JSON.stringify({
+    sessionId: session.id, action: 'openTerminal', workspaceKey: workspaceFor(fixture.ctx, session).key,
+  })}));
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, 'TERMINAL_SANDBOX_UNAVAILABLE');
 });
 
 test('connection choices follow the SSH service allowlist', () => {

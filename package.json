@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-terminal",
-  "version": "0.2.0",
-  "description": "Interactive local and SSH terminals for DeepSeek Harness: a Codex-style dock panel plus agent-facing PTY tools",
+  "version": "0.3.0",
+  "description": "Interactive local and SSH terminals for DeepSeek Harness: a bottom dock opened from the Session header, plus agent-facing PTY tools",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -38,7 +38,7 @@
   "dsh": {
     "client": {
       "platform": "web",
-      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+      "inject": ["@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-conversation"]
     },
     "bundle": {
       "patch": "./cordis.patch.yml"

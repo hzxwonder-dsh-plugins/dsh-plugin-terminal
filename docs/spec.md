@@ -4,21 +4,25 @@
 
 The plugin owns both terminal surfaces and they share one PTY manager.
 
-- The dock panel is the browser surface. It mounts in the composer dock slot,
-  stores its own per-Session state in the browser, and drives the manager over
+- The dock is the browser surface. A toggle in the Session header's right-aligned
+  utilities opens it; the open dock is one frame-wide layer that spans from the
+  right edge of the left column to the window edge and reserves that strip so the
+  composer and the right column stay visible. Open state, height, and the selected
+  target live in browser storage, while every terminal stays owned by the Session
+  and works before any agent runs. The browser half drives the manager over
   `POST /api/dsh-terminal` plus the `panel.js` and `panel.css` assets that carry
-  xterm. Panel terminals are owned by the Session and work before any agent runs.
+  xterm.
 - Agent tools are the model surface. Local tools use the official Harness
   terminal registry composed by this bundle's patch; remote tools use
   `remote-pty-*` ids through the same manager with an exact-object owner check.
 
-`dsh-plugin-sidebar` owns files only. The panel no longer depends on the right
+`dsh-plugin-sidebar` owns files only. The dock no longer depends on the right
 sidebar or on any other plugin's HTTP route, so removing the sidebar leaves the
-terminal panel intact.
+terminal dock intact.
 
 ## Panel transport
 
-The panel resolves its placement from server state, never from client input:
+The dock resolves its target from server state, never from client input:
 
 | Action | Effect |
 | --- | --- |
@@ -33,13 +37,16 @@ The panel resolves its placement from server state, never from client input:
 | `signalTerminal` | One allowed POSIX signal to the foreground process group |
 | `closeTerminal` | Close and await PTY teardown |
 
-Every mutating action carries the workspace key the client last observed. A
-mismatched key returns `409 TERMINAL_WORKSPACE_CHANGED`, and a terminal opened
-while the target changed is closed before the error is returned. Read-only
-Sessions are limited to `workspace`, `connections`, `listTerminals`, and
-`readTerminal`; anything else fails with `TERMINAL_READ_ONLY`.
+Read actions — `workspace`, `connections`, `listTerminals`, and `readTerminal` —
+observe state and are accepted without a key. Every mutating action carries the
+workspace key the client last observed: a mismatched key returns
+`409 TERMINAL_WORKSPACE_CHANGED`, and a terminal opened while the target changed
+is closed before the error is returned. Read-only Sessions are limited to the read
+actions; anything else fails with `TERMINAL_READ_ONLY`. A failure outside the
+coded cases reports its message next to the generic code, so the dock can show
+what actually went wrong instead of a bare status.
 
-The panel reads raw terminal output, so ANSI sequences, cursor addressing, and
+The dock reads raw terminal output, so ANSI sequences, cursor addressing, and
 fullscreen TUIs render. The agent-facing `remote_terminal_read` keeps returning
 ANSI-cleaned, redacted, bounded text.
 
@@ -65,6 +72,12 @@ provider's terminal teardown promise. A failed SSH startup is never published as
 a usable session.
 
 ## Policy
+
+A local dock terminal is wrapped by the Session's own sandbox policy before it is
+spawned, exactly as the official terminal backends wrap theirs, so the dock never
+runs a shell outside the mode the Session shows. A policy that needs a sandbox
+provider this deployment does not have fails closed with
+`TERMINAL_SANDBOX_UNAVAILABLE`.
 
 Remote open/send/signal/close operations use the effective Harness sandbox
 policy and approval service for agent calls. Read-only sessions fail closed for

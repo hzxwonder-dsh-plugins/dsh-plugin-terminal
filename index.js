@@ -185,9 +185,14 @@ async function runPanelAction(ctx, manager, owners, args, signal) {
   if (args.action === 'workspace') return workspaceFor(ctx, session);
   if (args.action === 'connections') return {connections: connectionChoices(ctx)};
 
-  const workspace = assertWorkspace(ctx, session, args.workspaceKey);
   const owner = owners.for(session);
-  if (!PANEL_READS.has(args.action) && workspace.readOnly) throw new Error('TERMINAL_READ_ONLY');
+  // Reads stay available on a workspace that just changed; mutations are fenced
+  // by the key the client last observed and fail closed when read-only.
+  let workspace;
+  if (!PANEL_READS.has(args.action)) {
+    workspace = assertWorkspace(ctx, session, args.workspaceKey);
+    if (workspace.readOnly) throw new Error('TERMINAL_READ_ONLY');
+  }
   if (args.action === 'listTerminals') return manager.list(owner);
   if (args.action === 'openTerminal') {
     // The connection id and root come from server state, never from the client.
@@ -243,7 +248,9 @@ export function apply(ctx, rawConfig = {}) {
         return Response.json(await runPanelAction(web, manager, owners, args, request.signal), {headers});
       } catch (error) {
         const code = errorCode(error);
-        return Response.json({error: code}, {status: code === 'TERMINAL_WORKSPACE_CHANGED' ? 409 : 400, headers});
+        // Coded failures keep their stable code; an unexpected failure also
+        // carries its message so the panel can show what actually went wrong.
+        return Response.json({error: code, detail: String(error?.message ?? error)}, {status: code === 'TERMINAL_WORKSPACE_CHANGED' ? 409 : 400, headers});
       }
     }});
   });
