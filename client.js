@@ -33,12 +33,11 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
   const dock = {
     open: stored.open === true,
     height: Number.isFinite(stored.height) ? Math.max(MIN_HEIGHT, stored.height) : DEFAULT_HEIGHT,
-    target: typeof stored.target === 'string' ? stored.target : 'local',
   };
   const subscribers = new Set();
   function updateDock(patch) {
     Object.assign(dock, patch);
-    writeState({open: dock.open, height: dock.height, target: dock.target});
+    writeState({open: dock.open, height: dock.height});
     for (const notify of [...subscribers]) notify();
   }
   function useDock() {
@@ -70,7 +69,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     .dsh-term-dock .dsh-term-action{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;padding:0;border:0;border-radius:7px;background:transparent;color:var(--term-muted);font:14px/1 system-ui;cursor:pointer}
     .dsh-term-dock .dsh-term-action:hover:not(:disabled){background:var(--term-hover);color:var(--dsw-alias-label-primary,#292929)}
     .dsh-term-dock .dsh-term-action:disabled{opacity:.4;cursor:default}
-    .dsh-term-target{height:26px;max-width:150px;flex:none;padding:0 4px;border:0;border-radius:7px;background:transparent;color:var(--term-muted);font:12px system-ui;cursor:pointer}
+    .dsh-term-where{max-width:150px;flex:none;padding:0 6px;color:var(--term-muted);font:12px/1 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dsh-term-body{display:flex;flex-direction:column;flex:1;min-height:0;position:relative}
     .dsh-term-view{flex:1;min-height:0;padding:6px 10px;overflow:hidden}
     .dsh-term-view .xterm{height:100%}
@@ -162,7 +161,6 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     const sessionId = useSessions?.(snapshot => snapshot?.current) ?? undefined;
     const open = state.open;
     const height = state.height;
-    const target = state.target;
     const [offset, setOffset] = React.useState(0);
     const [connections, setConnections] = React.useState([]);
     const [sessions, setSessions] = React.useState([]);
@@ -217,25 +215,75 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
       return () => {resize?.disconnect(); mutate.disconnect(); window.removeEventListener('resize', measure);};
     }, []);
 
-    // Reserve the strip the panel occupies, so the composer and the right column
-    // stay in view instead of hiding behind it. Only the children that reach the
-    // frame's bottom edge share that strip; anything above it keeps its height.
+    // Reserve the strip the panel occupies by shortening the columns that reach
+    // the frame's bottom edge, so the composer and the right column end above the
+    // panel instead of hiding behind it. Padding is not enough: a column lays its
+    // own content out at the frame's full height, so the lower part of the right
+    // column stays under the panel. The left column keeps its height, and a
+    // column that appears later (a right column that was collapsed) is reserved
+    // when it mounts.
     React.useEffect(() => {
       if (!open) return undefined;
       const shell = shellFrame();
       if (!shell) return undefined;
-      const bottom = shell.frame.getBoundingClientRect().bottom;
-      const reserved = [];
-      for (const child of shell.frame.children) {
-        if (child === shell.layer || child === shell.sidebar) continue;
-        if (child.getBoundingClientRect().bottom < bottom - 1) continue;
-        child.style.paddingBottom = `${height}px`;
-        reserved.push(child);
-      }
-      return () => {for (const child of reserved) child.style.paddingBottom = '';};
+      const reserved = new Map();
+      const reserve = () => {
+        const bounds = shell.frame.getBoundingClientRect();
+        for (const child of shell.frame.children) {
+          if (child === shell.layer || child === shell.sidebar || reserved.has(child)) continue;
+          const rect = child.getBoundingClientRect();
+          if (rect.width <= 0 || rect.bottom < bounds.bottom - 1) continue;
+          const style = getComputedStyle(child);
+          const floating = style.position === 'absolute' || style.position === 'fixed';
+          const previous = floating
+            ? {bottom: child.style.bottom}
+            : {height: child.style.height, alignSelf: child.style.alignSelf, boxSizing: child.style.boxSizing};
+          if (floating) child.style.bottom = `${height}px`;
+          else {
+            child.style.boxSizing = 'border-box';
+            child.style.height = `calc(100% - ${height}px)`;
+            child.style.alignSelf = 'start';
+          }
+          reserved.set(child, previous);
+        }
+      };
+      reserve();
+      // A column that was collapsed when the panel opened is reserved as soon as
+      // it takes up width again, and one that mounts later is caught by the child
+      // list watch.
+      const sizes = typeof ResizeObserver === 'function' ? new ResizeObserver(() => reserve()) : null;
+      const observe = () => {
+        if (!sizes) return;
+        sizes.disconnect();
+        for (const child of shell.frame.children) sizes.observe(child);
+      };
+      const watch = new MutationObserver(() => {observe(); reserve();});
+      watch.observe(shell.frame, {childList: true, attributes: true, attributeFilter: ['class', 'style', 'data-sidebar-collapsed']});
+      observe();
+      return () => {
+        watch.disconnect();
+        sizes?.disconnect();
+        for (const [child, previous] of reserved) {
+          child.style.bottom = previous.bottom ?? '';
+          child.style.height = previous.height ?? '';
+          child.style.alignSelf = previous.alignSelf ?? '';
+          child.style.boxSizing = previous.boxSizing ?? '';
+        }
+      };
     }, [open, height]);
 
-    // Workspace facts, targets, and the Session's terminal list.
+    // A terminal belongs to the Session that opened it, so switching Sessions
+    // empties the panel before the new Session's own list arrives.
+    React.useEffect(() => {
+      setSessions([]);
+      setActive('');
+      setStatus('');
+    }, [sessionId]);
+
+    // Workspace facts, the terminals of the Session, and the environment a new
+    // terminal will use. Facts are tagged with the Session they describe: a
+    // Session that just changed has none yet, and acting on the previous one's
+    // facts is what the Host refuses as a changed workspace.
     React.useEffect(() => {
       if (!open || typeof sessionId !== 'string') return undefined;
       const controller = new AbortController();
@@ -245,7 +293,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
         try {
           const facts = await call({action: 'workspace'}, controller.signal);
           if (controller.signal.aborted) return;
-          workspace.current = facts;
+          workspace.current = {...facts, session: sessionId};
           const listed = await call({action: 'listTerminals'}, controller.signal);
           if (controller.signal.aborted) return;
           setSessions(listed);
@@ -368,20 +416,38 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     const perform = React.useCallback(async args => {
       if (busy) return;
       setBusy(true); setStatus('');
+      // Every action but opening addresses one terminal, and the Host refuses a
+      // request without that id.
+      const scoped = args.action === 'openTerminal' ? args : {terminalId: active, ...args};
       try {
-        const result = await call(args, lifetime.current?.signal);
+        const result = await call(scoped, lifetime.current?.signal);
         if (args.action === 'openTerminal') {
           setSessions(old => [...old, result]);
           setActive(result.sessionId);
           updateDock({open: true});
         } else if (args.action === 'closeTerminal') {
+          const closed = terminals.current.get(active);
+          terminals.current.delete(active);
+          closed?.observer?.disconnect();
+          closed?.terminal?.dispose();
           setSessions(old => old.filter(item => item.sessionId !== active));
           setActive('');
         } else if (args.action === 'signalTerminal') {
           setStatus('已发送中断信号');
         }
       } catch (error) {
-        if (!lifetime.current?.signal.aborted) report(error);
+        if (!lifetime.current?.signal.aborted) {
+          // A terminal the Host no longer knows is dropped instead of being left
+          // as a tab that fails every action until the next poll agrees.
+          if (error?.message === 'TERMINAL_INVALID_SESSION') {
+            setSessions(old => old.filter(item => item.sessionId !== active));
+            setActive('');
+          }
+          // A workspace that moved under the request is retried by the next poll
+          // with the facts of the Session the panel is showing now.
+          if (error?.message === 'TERMINAL_WORKSPACE_CHANGED') seeded.current = '';
+          report(error);
+        }
       } finally {
         if (!lifetime.current?.signal.aborted) setBusy(false);
       }
@@ -390,15 +456,21 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     const create = React.useCallback(() => {
       if (opening.current) return;
       opening.current = true;
-      void perform(target === 'local' ? {action: 'openTerminal'} : {action: 'openTerminal', connectionId: target})
-        .finally(() => {opening.current = false;});
-    }, [perform, target]);
+      // Where the terminal opens is the Session's own workspace — the local
+      // directory or the SSH host it is bound to — so no target has to be
+      // chosen before the panel can be used.
+      void perform({action: 'openTerminal'}).finally(() => {opening.current = false;});
+    }, [perform]);
 
-    // Opening the dock on a Session without terminals starts one on the current
-    // target, which is what the toggle promises.
+    // Opening the dock on a Session without terminals starts one in that
+    // Session's own workspace, which is what the toggle promises. The workspace
+    // facts have to describe this Session: the previous Session's key would be
+    // refused as a changed workspace, so the attempt waits for the poll instead
+    // of being marked as done.
     React.useEffect(() => {
       if (!open || typeof sessionId !== 'string' || seeded.current === sessionId) return;
-      if (!workspace.current || workspace.current.readOnly || !workspace.current.root) return;
+      if (workspace.current?.session !== sessionId) return;
+      if (workspace.current.readOnly || !workspace.current.root) return;
       if (sessions.length) return;
       seeded.current = sessionId;
       create();
@@ -420,10 +492,17 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     };
 
     if (!open || typeof sessionId !== 'string') return null;
-    const readOnly = workspace.current?.readOnly === true;
-    const unavailable = workspace.current !== null && !workspace.current.root;
+    // Only facts that describe the Session on screen count: a Session that just
+    // changed shows its own environment as soon as the poll returns.
+    const facts = workspace.current?.session === sessionId ? workspace.current : null;
+    const readOnly = facts?.readOnly === true;
+    const unavailable = facts !== null && !facts.root;
     const tabLabel = item => item.host === 'localhost' ? '本机' : (connections.find(connection => connection.id === item.connectionId)?.name ?? item.host);
     const current = sessions.find(item => item.sessionId === active);
+    // A terminal lives in the Session's own workspace — the local directory or
+    // the SSH host the workspace is bound to — so the bar states where a new one
+    // opens instead of asking for a target first.
+    const location = facts?.kind === 'ssh' ? `SSH · ${facts.label}` : (facts?.label ?? '本机');
     const button = (label, title, disabled, onClick, extra = {}) => h('button', {
       type: 'button', className: 'dsh-term-action', 'aria-label': title, title, disabled, onClick, ...extra,
     }, label);
@@ -442,12 +521,10 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
             onClick: () => setActive(item.sessionId),
           }, h('span', {className: 'dsh-term-tab-label'}, tabLabel(item)))),
           !sessions.length && h('span', {style: {color: 'var(--term-muted)', font: '12px system-ui', paddingLeft: 6}}, '终端')),
-        h('select', {
-          className: 'dsh-term-target', 'aria-label': '新建终端的目标', value: target, disabled: busy || readOnly,
-          title: '新建终端时使用的目标',
-          onChange: event => updateDock({target: event.target.value}),
-        }, h('option', {value: 'local'}, '本机'),
-          connections.map(connection => h('option', {key: connection.id, value: connection.id}, `SSH · ${connection.name}`))),
+        h('span', {
+          className: 'dsh-term-where', 'data-dsh-terminal': 'where',
+          title: `终端跟随当前工作区：${location}`,
+        }, location),
         button('+', '新建终端', busy || readOnly || unavailable, create),
         button('⎋', '中断前台命令 (Ctrl+C)', busy || readOnly || !active, () => void perform({action: 'signalTerminal', signal: 'SIGINT'})),
         button('×', '关闭当前终端', busy || readOnly || !active, () => void perform({action: 'closeTerminal'})),

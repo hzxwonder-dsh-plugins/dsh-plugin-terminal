@@ -6,12 +6,16 @@ The plugin owns both terminal surfaces and they share one PTY manager.
 
 - The dock is the browser surface. A toggle in the Session header's right-aligned
   utilities opens it; the open dock is one frame-wide layer that spans from the
-  right edge of the left column to the window edge and reserves that strip so the
-  composer and the right column stay visible. Open state, height, and the selected
-  target live in browser storage, while every terminal stays owned by the Session
-  and works before any agent runs. The browser half drives the manager over
+  right edge of the left column to the window edge and shortens the columns that
+  reach the frame's bottom edge, so the composer and the right column end above it
+  and their inner layouts follow. Open state, height, and the active tab live in
+  browser storage, while every terminal stays owned by the Session and works
+  before any agent runs. The browser half drives the manager over
   `POST /api/dsh-terminal` plus the `panel.js` and `panel.css` assets that carry
-  xterm.
+  xterm. The bar names the environment a new terminal will use — the Session's own
+  workspace, local or SSH — and the terminals it opened are the ones the Session
+  may act on, so a terminal that no longer exists is dropped from the panel
+  instead of failing every later action.
 - Agent tools are the model surface. Local tools use the official Harness
   terminal registry composed by this bundle's patch; remote tools use
   `remote-pty-*` ids through the same manager with an exact-object owner check.
@@ -27,7 +31,7 @@ The dock resolves its target from server state, never from client input:
 | Action | Effect |
 | --- | --- |
 | `workspace` | The Session's current target: kind, root, connection, label, read-only |
-| `connections` | Allow-listed SSH connections the target selector may offer |
+| `connections` | Allow-listed SSH connections, for naming the terminals the panel shows |
 | `listTerminals` | The Session owner's terminals |
 | `openTerminal` | Local PTY, or a remote PTY on the bound connection in its root |
 | `readTerminal` | Raw output after a cursor, with `reset` for a dropped buffer |

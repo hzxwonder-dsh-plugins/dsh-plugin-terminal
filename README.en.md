@@ -17,9 +17,9 @@ when it knows the `sessionId`.
 - Interactive terminal: xterm.js rendering with direct keyboard input,
   ANSI/UTF-8, cursor addressing and fullscreen TUIs, scrollback, and size
   synchronization. `Ctrl/Cmd+Shift+C` copies and `Ctrl/Cmd+Shift+V` pastes.
-- Multiple sessions: one workspace can hold several terminals, and local and SSH
-  targets share the panel. Panel sessions survive a page refresh; the panel
-  reattaches to them when reopened.
+- Multiple sessions: one workspace can hold several terminals, and each of them
+  runs in the Session's own environment. Panel sessions survive a page refresh;
+  the panel reattaches to them when reopened.
 - Local sessions compose `@deepseek-ai/dsh-terminal`,
   `@deepseek-ai/dsh-terminal-bash`, and
   `@deepseek-ai/dsh-tool-terminal`, exposing `terminal_open`,
@@ -73,9 +73,11 @@ edge of the left column to the window edge, sits on the bottom of the frame, and
 reserves its strip so the composer and any open right column stay visible. The
 same toggle collapses it again.
 
-`+` creates a terminal on the current target: the target selector lists `本机` and
-every allow-listed SSH connection. A dot on a tab means the session is still
-running; a grey dot means it exited. Open state, height, target, and the current
+`+` creates a terminal in the Session's own workspace, and the bar states that
+environment (`本机` or `SSH · <connection>`): a local workspace starts a local
+terminal, an SSH workspace starts a remote terminal in that connection's
+directory, and no target has to be chosen first. A dot on a tab means the session
+is still running; a grey dot means it exited. Open state, height, and the current
 tab are stored in the browser only.
 
 A local dock terminal is wrapped by the current Session's sandbox policy before it

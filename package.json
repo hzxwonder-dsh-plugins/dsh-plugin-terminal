@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-terminal",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Interactive local and SSH terminals for DeepSeek Harness: a bottom dock opened from the Session header, plus agent-facing PTY tools",
   "type": "module",
   "main": "index.js",
