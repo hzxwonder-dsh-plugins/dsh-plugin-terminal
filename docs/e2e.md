@@ -8,8 +8,10 @@
    the composer and any open right column still visible above it.
 2. Confirm the first open starts a terminal on the default target and renders a
    shell prompt that accepts typing, including a fullscreen TUI such as `vim`.
-3. Open a second terminal and switch between the tabs; confirm each keeps its
-   own screen and scrollback.
+3. Open a second terminal and switch between the tabs; confirm the terminal on
+   screen is the one that holds the focus and accepts typing, that the tab behind
+   it keeps its own screen and scrollback, and that switching back still types
+   into the terminal it switched to.
 4. Drag the top edge and confirm the PTY width follows the container.
 5. Reload the page, reopen the dock, and confirm the sessions are still listed
    and reattach to their output.

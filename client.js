@@ -54,7 +54,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     .dsh-term-toggle:hover{background:var(--dsw-alias-interactive-bg-hover,#eee);color:var(--dsw-alias-label-primary,#292929)}
     .dsh-term-toggle[aria-pressed="true"]{background:var(--dsw-alias-interactive-bg-hover,#eee);color:var(--dsw-alias-label-primary,#292929)}
     .dsh-term-toggle svg{width:16px;height:16px;display:block}
-    .dsh-term-dock{--term-line:var(--dsw-alias-border-l3,#e7e7e7);--term-muted:var(--dsw-alias-label-secondary,#777);--term-hover:var(--dsw-alias-interactive-bg-hover,#eee);position:absolute;right:0;bottom:0;z-index:1;display:flex;flex-direction:column;min-width:0;color:var(--dsw-alias-label-primary,#292929);background:var(--dsw-alias-bg-base,#fff);border-top:1px solid var(--term-line);overflow:hidden;letter-spacing:0}
+    .dsh-term-dock{--term-line:var(--dsw-alias-border-l3,#e7e7e7);--term-muted:var(--dsw-alias-label-secondary,#777);--term-hover:var(--dsw-alias-interactive-bg-hover,#eee);position:absolute;right:0;bottom:0;z-index:1;display:flex;flex-direction:column;min-width:0;max-height:calc(100% - 40px);color:var(--dsw-alias-label-primary,#292929);background:var(--dsw-alias-bg-base,#fff);border-top:1px solid var(--term-line);overflow:hidden;letter-spacing:0}
     .dsh-term-dock *{box-sizing:border-box;letter-spacing:0}
     .dsh-term-grip{height:5px;flex:none;cursor:ns-resize;background:transparent}
     .dsh-term-dock .dsh-term-grip:hover{background:var(--term-hover)}
@@ -67,6 +67,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     .dsh-term-tab.is-exited::before{content:'';width:6px;height:6px;flex:none;border-radius:50%;background:#c9c9c9}
     .dsh-term-tab-label{overflow:hidden;text-overflow:ellipsis}
     .dsh-term-dock .dsh-term-action{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;padding:0;border:0;border-radius:7px;background:transparent;color:var(--term-muted);font:14px/1 system-ui;cursor:pointer}
+    .dsh-term-dock .dsh-term-action svg{width:14px;height:14px;display:block}
     .dsh-term-dock .dsh-term-action:hover:not(:disabled){background:var(--term-hover);color:var(--dsw-alias-label-primary,#292929)}
     .dsh-term-dock .dsh-term-action:disabled{opacity:.4;cursor:default}
     .dsh-term-where{max-width:150px;flex:none;padding:0 6px;color:var(--term-muted);font:12px/1 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -107,11 +108,6 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     ]).then(([module]) => module).catch(error => { asset = null; throw error; });
   }
 
-  /** Move an element to the end of its parent so the active terminal paints on top. */
-  function raise(node) {
-    if (node?.parentElement) node.parentElement.appendChild(node);
-  }
-
   /**
    * The shell frame that lays out the left column, the content and the right
    * column, the overlay layer the frame renders above them, and the left column
@@ -136,10 +132,22 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     return {layer, frame, sidebar};
   }
 
-  const TERMINAL_ICON = h('svg', {
-    viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4,
-    strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
-  }, h('path', {d: 'M3.2 4.4 6 7.2 3.2 10'}), h('path', {d: 'M7.6 10.4h5.2'}));
+  // The toggle and every dock action share one 16-unit stroke set. Text glyphs
+  // (`+`, `×`, `⌄`) render at a different optical size in every font, which is
+  // what makes a toolbar look misaligned.
+  const ICON_PATHS = {
+    terminal: ['M3 4.3 6.2 7.5 3 10.7', 'M7.8 10.7h5.4'],
+    plus: ['M8 3.4v9.2', 'M3.4 8h9.2'],
+    stop: ['M5.3 5.3h5.4v5.4H5.3z'],
+    close: ['M4.6 4.6 11.4 11.4', 'M11.4 4.6 4.6 11.4'],
+    chevron: ['M4.8 6.6 8 9.8l3.2-3.2'],
+  };
+  function glyph(name) {
+    return h('svg', {
+      viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5,
+      strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true,
+    }, ICON_PATHS[name].map(d => h('path', {key: d, d})));
+  }
 
   /** Session header control: the top-right entry point into the dock. */
   function TerminalToggle() {
@@ -152,7 +160,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
       'aria-pressed': state.open,
       title: state.open ? '收起终端面板' : '打开终端面板',
       onClick: () => updateDock({open: !dock.open}),
-    }, TERMINAL_ICON);
+    }, glyph('terminal'));
   }
 
   /** Frame-wide panel docked to the bottom of the content area. */
@@ -166,9 +174,14 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     const [sessions, setSessions] = React.useState([]);
     const [active, setActive] = React.useState('');
     const [status, setStatus] = React.useState('');
+    const [activity, setActivity] = React.useState('');
     const [busy, setBusy] = React.useState(false);
-    const view = React.useRef(null);
+    // The view node is state, not a ref: attaching has to run again when the
+    // element appears, or a panel that renders late never gets its terminal.
+    const [viewNode, setViewNode] = React.useState(null);
+    const [limit, setLimit] = React.useState(() => Math.round(Math.max(MIN_HEIGHT, (window.innerHeight || DEFAULT_HEIGHT * 2) * 0.85)));
     const terminals = React.useRef(new Map());
+    const performing = React.useRef(false);
     const alive = React.useRef(null);
     const lifetime = React.useRef(null);
     const workspace = React.useRef(null);
@@ -180,6 +193,15 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
       lifetime.current = controller;
       return () => {controller.abort(); lifetime.current = null;};
     }, []);
+
+    // A stored height belongs to the window it was dragged in; a smaller window
+    // clamps it instead of pushing the panel's footer below the frame.
+    React.useEffect(() => {
+      const measure = () => setLimit(Math.round(Math.max(MIN_HEIGHT, window.innerHeight * 0.85)));
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }, []);
+    const panelHeight = Math.min(height, limit);
 
     const call = React.useCallback(async (args, signal) => {
       if (typeof sessionId !== 'string') throw new Error('TERMINAL_SESSION_REQUIRED');
@@ -238,10 +260,10 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           const previous = floating
             ? {bottom: child.style.bottom}
             : {height: child.style.height, alignSelf: child.style.alignSelf, boxSizing: child.style.boxSizing};
-          if (floating) child.style.bottom = `${height}px`;
+          if (floating) child.style.bottom = `${panelHeight}px`;
           else {
             child.style.boxSizing = 'border-box';
-            child.style.height = `calc(100% - ${height}px)`;
+            child.style.height = `calc(100% - ${panelHeight}px)`;
             child.style.alignSelf = 'start';
           }
           reserved.set(child, previous);
@@ -270,7 +292,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           child.style.boxSizing = previous.boxSizing ?? '';
         }
       };
-    }, [open, height]);
+    }, [open, panelHeight]);
 
     // A terminal belongs to the Session that opened it, so switching Sessions
     // empties the panel before the new Session's own list arrives.
@@ -316,15 +338,16 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
 
     // Attach xterm for the active terminal and pump its output stream.
     React.useEffect(() => {
-      if (!open || !active) return undefined;
+      if (!open || !active || !viewNode) return undefined;
+      const id = active;
       const controller = new AbortController();
-      const send = (args, signal) => call({terminalId: active, ...args}, signal);
+      const send = (args, signal) => call({terminalId: id, ...args}, signal);
       let timer;
       const attach = async () => {
         try {
           const module = await loadAsset();
-          if (controller.signal.aborted || !view.current) return;
-          let entry = terminals.current.get(active);
+          if (controller.signal.aborted) return;
+          let entry = terminals.current.get(id);
           if (!entry) {
             const terminal = new module.Terminal({
               cursorBlink: true,
@@ -332,11 +355,11 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
               scrollback: 5000,
               screenReaderMode: true,
-              theme: themeFor(view.current),
+              theme: themeFor(viewNode),
             });
             const fitAddon = new module.FitAddon();
             terminal.loadAddon(fitAddon);
-            terminal.open(view.current);
+            terminal.open(viewNode);
             terminal.textarea?.setAttribute('aria-label', '终端输入');
             terminal.attachCustomKeyEventHandler(event => {
               if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return true;
@@ -350,28 +373,42 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
               }
               return true;
             });
-            entry = {terminal, fit: fitAddon, cursor: 0, pumped: false, observer: undefined, themeObserver: undefined};
-            terminals.current.set(active, entry);
+            entry = {
+              id, terminal, fit: fitAddon, cursor: 0, pumped: false, queue: Promise.resolve(),
+              writes: new AbortController(), observer: undefined, themeObserver: undefined,
+            };
+            terminals.current.set(id, entry);
+            // Keystrokes ride the entry's own signal, in order. The attach
+            // controller dies on every tab switch, and a write bound to it is
+            // rejected from then on — the terminal looks connected and refuses
+            // to type.
             terminal.onData(text => {
               if (workspace.current?.readOnly) return;
-              void send({action: 'writeTerminal', text}, controller.signal).catch(report);
+              const signal = entry.writes.signal;
+              entry.queue = entry.queue
+                .then(() => call({terminalId: id, action: 'writeTerminal', text}, signal))
+                .catch(error => { if (!signal.aborted) report(error); });
             });
-            entry.themeObserver = new MutationObserver(() => {terminal.options.theme = themeFor(view.current);});
+            entry.themeObserver = new MutationObserver(() => {terminal.options.theme = themeFor(viewNode);});
             entry.themeObserver.observe(document.documentElement, {attributes: true});
           }
-          raise(entry.terminal.element);
+          // Only the terminal on screen holds a box in the view. Stacked xterms
+          // leave the inactive one showing and push the active one — the one
+          // that takes the focus — below the dock, out of sight.
+          for (const [key, item] of terminals.current) {
+            const node = item.terminal.element;
+            if (node) node.style.display = key === id ? '' : 'none';
+          }
           entry.terminal.focus();
-          entry.cursor = 0;
-          entry.pumped = false;
           const fit = () => {
-            if (!view.current?.clientWidth || !view.current?.clientHeight) return;
+            if (!viewNode.clientWidth || !viewNode.clientHeight) return;
             entry.fit.fit();
             if (!entry.pumped || workspace.current?.readOnly) return;
-            void send({action: 'resizeTerminal', cols: entry.terminal.cols, rows: entry.terminal.rows}, controller.signal).catch(() => {});
+            void call({terminalId: id, action: 'resizeTerminal', cols: entry.terminal.cols, rows: entry.terminal.rows}, entry.writes.signal).catch(() => {});
           };
           entry.observer?.disconnect();
           entry.observer = new ResizeObserver(fit);
-          entry.observer.observe(view.current);
+          entry.observer.observe(viewNode);
           const pump = async () => {
             try {
               const result = await send({action: 'readTerminal', cursor: entry.cursor}, controller.signal);
@@ -401,21 +438,27 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           entry.observer = undefined;
         }
       };
-    }, [open, active, call, report]);
+    }, [open, active, viewNode, call, report]);
 
     // Terminal instances outlive tab switches; the panel disposes them.
     React.useEffect(() => () => {
       for (const entry of terminals.current.values()) {
         entry.observer?.disconnect();
         entry.themeObserver?.disconnect();
+        entry.writes?.abort();
         entry.terminal.dispose();
       }
       terminals.current.clear();
     }, []);
 
     const perform = React.useCallback(async args => {
-      if (busy) return;
-      setBusy(true); setStatus('');
+      // In flight, not merely busy: the panel states what it is doing instead of
+      // swallowing the request, so a slow Host never looks like a dead button.
+      if (performing.current) return false;
+      performing.current = true;
+      setBusy(true);
+      setStatus('');
+      setActivity({openTerminal: '正在新建终端…', closeTerminal: '正在关闭终端…', signalTerminal: '正在发送中断信号…'}[args.action] ?? '');
       // Every action but opening addresses one terminal, and the Host refuses a
       // request without that id.
       const scoped = args.action === 'openTerminal' ? args : {terminalId: active, ...args};
@@ -429,12 +472,16 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           const closed = terminals.current.get(active);
           terminals.current.delete(active);
           closed?.observer?.disconnect();
+          closed?.themeObserver?.disconnect();
+          closed?.writes?.abort();
+          closed?.terminal?.element?.remove();
           closed?.terminal?.dispose();
           setSessions(old => old.filter(item => item.sessionId !== active));
           setActive('');
         } else if (args.action === 'signalTerminal') {
           setStatus('已发送中断信号');
         }
+        return true;
       } catch (error) {
         if (!lifetime.current?.signal.aborted) {
           // A terminal the Host no longer knows is dropped instead of being left
@@ -448,32 +495,34 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           if (error?.message === 'TERMINAL_WORKSPACE_CHANGED') seeded.current = '';
           report(error);
         }
+        return false;
       } finally {
-        if (!lifetime.current?.signal.aborted) setBusy(false);
+        performing.current = false;
+        if (!lifetime.current?.signal.aborted) { setBusy(false); setActivity(''); }
       }
-    }, [active, busy, call, report]);
+    }, [active, call, report]);
 
     const create = React.useCallback(() => {
-      if (opening.current) return;
+      if (opening.current) return Promise.resolve(false);
       opening.current = true;
       // Where the terminal opens is the Session's own workspace — the local
       // directory or the SSH host it is bound to — so no target has to be
       // chosen before the panel can be used.
-      void perform({action: 'openTerminal'}).finally(() => {opening.current = false;});
+      return perform({action: 'openTerminal'}).finally(() => {opening.current = false;});
     }, [perform]);
 
     // Opening the dock on a Session without terminals starts one in that
     // Session's own workspace, which is what the toggle promises. The workspace
     // facts have to describe this Session: the previous Session's key would be
     // refused as a changed workspace, so the attempt waits for the poll instead
-    // of being marked as done.
+    // of being marked as done. It is marked only once the request really starts,
+    // so an attempt that never left the client is retried by the next poll.
     React.useEffect(() => {
       if (!open || typeof sessionId !== 'string' || seeded.current === sessionId) return;
       if (workspace.current?.session !== sessionId) return;
       if (workspace.current.readOnly || !workspace.current.root) return;
       if (sessions.length) return;
-      seeded.current = sessionId;
-      create();
+      void create().then(started => {if (started) seeded.current = sessionId;});
     }, [open, sessionId, sessions, create]);
 
     const startResize = event => {
@@ -481,7 +530,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
       const startY = event.clientY;
       const startHeight = dock.height;
       const move = moveEvent => updateDock({
-        height: Math.max(MIN_HEIGHT, Math.min(startHeight + (startY - moveEvent.clientY), Math.round(window.innerHeight * 0.85))),
+        height: Math.max(MIN_HEIGHT, Math.min(startHeight + (startY - moveEvent.clientY), limit)),
       });
       const finish = () => {
         window.removeEventListener('pointermove', move);
@@ -509,7 +558,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
 
     return h('section', {
       className: 'dsh-term-dock', 'data-dsh-terminal': 'dock',
-      style: {height, left: offset}, 'aria-label': '终端面板',
+      style: {height: panelHeight, left: offset}, 'aria-label': '终端面板',
     },
       h('div', {className: 'dsh-term-grip', role: 'separator', 'aria-label': '调整终端高度', onPointerDown: startResize}),
       h('div', {className: 'dsh-term-bar'},
@@ -525,15 +574,15 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           className: 'dsh-term-where', 'data-dsh-terminal': 'where',
           title: `终端跟随当前工作区：${location}`,
         }, location),
-        button('+', '新建终端', busy || readOnly || unavailable, create),
-        button('⎋', '中断前台命令 (Ctrl+C)', busy || readOnly || !active, () => void perform({action: 'signalTerminal', signal: 'SIGINT'})),
-        button('×', '关闭当前终端', busy || readOnly || !active, () => void perform({action: 'closeTerminal'})),
-        button('⌄', '收起终端面板', false, () => updateDock({open: false}))),
+        button(glyph('plus'), '新建终端', busy || readOnly || unavailable, create),
+        button(glyph('stop'), '中断前台命令 (Ctrl+C)', busy || readOnly || !active, () => void perform({action: 'signalTerminal', signal: 'SIGINT'})),
+        button(glyph('close'), '关闭当前终端', busy || readOnly || !active, () => void perform({action: 'closeTerminal'})),
+        button(glyph('chevron'), '收起终端面板', false, () => updateDock({open: false}))),
       h('div', {className: 'dsh-term-body'},
-        h('div', {className: 'dsh-term-view', ref: view, 'aria-label': '终端输出'}),
+        h('div', {className: 'dsh-term-view', ref: setViewNode, 'aria-label': '终端输出'}),
         !active && h('div', {className: 'dsh-term-empty'}, unavailable ? '当前工作区不可用' : '点击 + 新建终端')),
       h('div', {className: 'dsh-term-status'},
-        h('span', null, status || current?.cwd || (readOnly ? '只读模式' : '')),
+        h('span', null, status || activity || current?.cwd || (readOnly ? '只读模式' : '')),
         h('span', null, readOnly ? '只读' : active ? '已连接' : '未连接')));
   }
 
