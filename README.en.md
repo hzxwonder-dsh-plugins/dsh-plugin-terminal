@@ -7,6 +7,19 @@ The panel and the tools share one PTY manager, and every session is bound to the
 owner that created it, so another owner cannot read or operate a session even
 when it knows the `sessionId`.
 
+## Host support
+
+- Both hosts share one package, `dsh-plugin-terminal`: no desktop-only package or
+  code branch, no separate repository, and one implementation for both.
+- The dock and agent tools share one PTY manager: a local PTY runs via the host's
+  subprocess service wrapped by `sandboxPolicy`, an SSH PTY reuses `sshWorkbench`
+  workspace facts — host-agnostic official services, so both hosts behave the same.
+- The plugin uses only official services, slots, and patches; desktop-only
+  capability never enters the top-level `inject` — see [dsh-desktop plugin development](https://github.com/anywhere-labs/dsh-desktop/blob/master/docs/plugin-development.md).
+- A fresh DSH Desktop instance passed the terminal panel suite 66/66 in one round
+  (local and SSH workspaces, create and close, interrupt, reserved layout); the Web
+  host is covered by unit tests and `tests/web-check.mjs`.
+
 ## Features
 
 - Bottom dock: the toggle in the Session header opens one panel across the full
