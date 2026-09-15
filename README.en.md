@@ -12,8 +12,8 @@ when it knows the `sessionId`.
 - Bottom dock: the toggle in the Session header opens one panel across the full
   width right of the left column, pinned to the bottom of the frame, and pushes
   the composer and the right column up so both stay visible. The top edge drags
-  to resize, the tab strip switches between terminals, and the new, interrupt,
-  close, and collapse controls sit on the right.
+  to resize, the tab strip switches between terminals, and the new, close, and
+  collapse controls sit on the right.
 - Interactive terminal: xterm.js rendering with direct keyboard input,
   ANSI/UTF-8, cursor addressing and fullscreen TUIs, scrollback, and size
   synchronization. `Ctrl/Cmd+Shift+C` copies and `Ctrl/Cmd+Shift+V` pastes.

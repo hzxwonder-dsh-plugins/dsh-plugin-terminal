@@ -1,0 +1,419 @@
+{
+  "sections": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H"
+  ],
+  "results": [
+    {
+      "id": "A1",
+      "ok": true,
+      "detail": "开关={\"label\":\"终端面板\",\"pressed\":\"false\",\"x\":1204,\"y\":43,\"w\":28,\"h\":28,\"right\":1232,\"bottom\":71}",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/A1-header-toggle.png"
+    },
+    {
+      "id": "A2",
+      "ok": true,
+      "detail": "点击开关后面板出现=true",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/A2-dock-open.png"
+    },
+    {
+      "id": "A3",
+      "ok": true,
+      "detail": "面板={\"x\":280,\"y\":519,\"w\":1000,\"h\":321,\"right\":1280,\"bottom\":840} 窗口={\"w\":1280,\"h\":840} pressed=true",
+      "evidence": null
+    },
+    {
+      "id": "A4",
+      "ok": true,
+      "detail": "内容列与面板重叠=[] 全部重叠项=[]",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/A4-reserve.png"
+    },
+    {
+      "id": "A5",
+      "ok": true,
+      "detail": "面板已收起=true 列底边=840 窗口高=840",
+      "evidence": null
+    },
+    {
+      "id": "A6",
+      "ok": true,
+      "detail": "收起前={\"tabs\":1,\"list\":1} 重开后={\"tabs\":1,\"list\":1}",
+      "evidence": null
+    },
+    {
+      "id": "A7",
+      "ok": true,
+      "detail": "收起前已出现=false 收起期间输出在重开后出现=true 重开后终端重新挂载=true",
+      "evidence": null
+    },
+    {
+      "id": "A12",
+      "ok": true,
+      "detail": "收起再展开后视图里有且仅有一个终端元素=true",
+      "evidence": null
+    },
+    {
+      "id": "A8",
+      "ok": true,
+      "detail": "刷新前 stored={\"open\":true,\"height\":320} 刷新后自动展开=true",
+      "evidence": null
+    },
+    {
+      "id": "A9",
+      "ok": true,
+      "detail": "渲染高度=321 存储高度=320",
+      "evidence": null
+    },
+    {
+      "id": "A10",
+      "ok": true,
+      "detail": "⌄ 收起生效=true",
+      "evidence": null
+    },
+    {
+      "id": "A11",
+      "ok": true,
+      "detail": "开关祖先链=[\"dsh-term-toggle\",\"DIV\",\"_0cyzDW_headerUtilities\",\"_0cyzDW_titleRow\",\"_0cyzDW_header\",\"DIV\"]（注册在会话标题栏，无标题栏的首页不渲染）",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/A11-header-ancestry.png"
+    },
+    {
+      "id": "B1",
+      "ok": true,
+      "detail": "先拖到中间=466 再拖高 120px 后=589",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/B1-drag-height.png"
+    },
+    {
+      "id": "B2",
+      "ok": true,
+      "detail": "高度=161（内容高度下限 160 + 1px 上边框）",
+      "evidence": null
+    },
+    {
+      "id": "B3",
+      "ok": true,
+      "detail": "高度=715 上限=714",
+      "evidence": null
+    },
+    {
+      "id": "B4",
+      "ok": true,
+      "detail": "缩小窗口后面板={\"bottom\":600,\"height\":511,\"win\":600,\"statusBottom\":600}",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/B4-small-window.png"
+    },
+    {
+      "id": "B5",
+      "ok": true,
+      "detail": "stty size=43 125 DOM 行数=43",
+      "evidence": null
+    },
+    {
+      "id": "B6",
+      "ok": true,
+      "detail": "拖拽与缩放后既有输出仍在",
+      "evidence": null
+    },
+    {
+      "id": "C1",
+      "ok": true,
+      "detail": "标签数=1 宿主终端数=1（会话首次打开自动播种）",
+      "evidence": null
+    },
+    {
+      "id": "C2",
+      "ok": true,
+      "detail": "标签数 1→2，新标签为当前=true，可见终端=true，焦点=终端输入",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/C2-second-terminal.png"
+    },
+    {
+      "id": "C3",
+      "ok": true,
+      "detail": "连点 8 次后标签数 2→4，新增 2（禁用期间被丢弃的点击 7，非禁用点击 1）",
+      "evidence": null
+    },
+    {
+      "id": "C4",
+      "ok": true,
+      "detail": "状态采样=[\"/Users/<user>/.dsh-desktop/plain-sessions已连接|0\",\"正在新建终端…已连接|2\"] 出现过忙碌态=true 出现过进行中文案=true",
+      "evidence": null
+    },
+    {
+      "id": "C5",
+      "ok": true,
+      "detail": "同一任务内连点 3 次：标签数 4→5（只应新增 1 个）",
+      "evidence": null
+    },
+    {
+      "id": "C6",
+      "ok": true,
+      "detail": "环境标签=本机 标签=[\"本机\",\"本机\",\"本机\",\"本机\"]",
+      "evidence": null
+    },
+    {
+      "id": "C7",
+      "ok": true,
+      "detail": "SSH 工作区在 G3 覆盖",
+      "evidence": null
+    },
+    {
+      "id": "C8",
+      "ok": true,
+      "detail": "标签数=6 标签栏可滚动=false 按钮同一行=true 按钮右缘=1272/1280",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/C8-many-tabs.png"
+    },
+    {
+      "id": "D1",
+      "ok": true,
+      "detail": "xterm 元素=6 可见=1 标签=6",
+      "evidence": null
+    },
+    {
+      "id": "D2",
+      "ok": true,
+      "detail": "切换后焦点=终端输入 可见终端=true 输入回显=true",
+      "evidence": null
+    },
+    {
+      "id": "D3",
+      "ok": true,
+      "detail": "切回第一个标签后仍能输入",
+      "evidence": null
+    },
+    {
+      "id": "D4",
+      "ok": true,
+      "detail": "两个终端画面互不串台=true",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/D4-tab-switch.png"
+    },
+    {
+      "id": "D5",
+      "ok": true,
+      "detail": "当前标签序号=1/6 可见终端=true",
+      "evidence": null
+    },
+    {
+      "id": "D6",
+      "ok": true,
+      "detail": "按钮布局={\"rows\":1,\"widths\":[26,26,26],\"right\":1272,\"win\":1280}",
+      "evidence": null
+    },
+    {
+      "id": "E1",
+      "ok": true,
+      "detail": "标签 6→5 xterm 元素 6→5",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/E1-after-close.png"
+    },
+    {
+      "id": "E2",
+      "ok": true,
+      "detail": "关闭后剩余终端可输入=true 焦点=终端输入",
+      "evidence": null
+    },
+    {
+      "id": "E4",
+      "ok": true,
+      "detail": "面板标签=5 宿主 listTerminals=5",
+      "evidence": null
+    },
+    {
+      "id": "E6",
+      "ok": true,
+      "detail": "状态采样=[\"/Users/<user>/.dsh-desktop/plain-sessions已连接|0\",\"正在新建终端…已连接|2\",\"正在关闭终端…已连接|2\",\"未连接|1\"]",
+      "evidence": null
+    },
+    {
+      "id": "E3",
+      "ok": true,
+      "detail": "关闭全部后={\"tabs\":0,\"xterms\":0,\"empty\":\"点击 + 新建终端\"} 3 秒后仍未自动新建=true",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/E3-empty-state.png"
+    },
+    {
+      "id": "E5",
+      "ok": true,
+      "detail": "重开面板后标签数=0（已关闭的不复活）",
+      "evidence": null
+    },
+    {
+      "id": "F1",
+      "ok": true,
+      "detail": "键盘输入回显并执行",
+      "evidence": null
+    },
+    {
+      "id": "F2",
+      "ok": true,
+      "detail": "Ctrl+C 后下一条命令 1ms 内执行（前台 sleep 30 未返回则需 30s）出现 ^C 标记=true",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/F2-ctrl-c.png"
+    },
+    {
+      "id": "F3",
+      "ok": true,
+      "detail": "↑ 重放上一条命令，f2-after 出现 4 次",
+      "evidence": null
+    },
+    {
+      "id": "F4",
+      "ok": true,
+      "detail": "文本含 RED-TEXT=true 屏幕上无 ESC 字节=true 红色=rgb(196, 160, 0) 默认色=rgb(15, 17, 21)",
+      "evidence": null
+    },
+    {
+      "id": "F5",
+      "ok": true,
+      "detail": "UTF-8 中文往返正常",
+      "evidence": null
+    },
+    {
+      "id": "F6",
+      "ok": true,
+      "detail": "宽字符整行未丢字",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/F6-cjk.png"
+    },
+    {
+      "id": "F7",
+      "ok": true,
+      "detail": "长行未横向溢出=true 行数=43",
+      "evidence": null
+    },
+    {
+      "id": "F8",
+      "ok": true,
+      "detail": "scrollback 高度=4841>641 上滚后 scrollTop 4200→3600",
+      "evidence": null
+    },
+    {
+      "id": "F9",
+      "ok": true,
+      "detail": "多行输入按行执行",
+      "evidence": null
+    },
+    {
+      "id": "F10",
+      "ok": true,
+      "detail": "面板高度 715→715，stty size=43 125 DOM 行数=43 焦点=终端输入",
+      "evidence": null
+    },
+    {
+      "id": "F11",
+      "ok": true,
+      "detail": "未执行注入=true 无 img 元素=true 按文本显示=true",
+      "evidence": null
+    },
+    {
+      "id": "G1",
+      "ok": true,
+      "detail": "切到另一个会话后环境=SSH · <ssh-connection> 该会话终端 1 个，与本机会话重名的 0 个（切换前本机 1 个）",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/G1-ssh-session.png"
+    },
+    {
+      "id": "G3",
+      "ok": true,
+      "detail": "SSH 会话里标签=[\"<ssh-connection>\"] 环境=SSH · <ssh-connection> 在远端执行并回显=true（1512ms）",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/G3-ssh-terminal.png"
+    },
+    {
+      "id": "G2",
+      "ok": true,
+      "detail": "切回本机会话：环境=本机 标签=1[\"本机\"]，宿主终端 id 与离开前一致=true（离开前 1 个，上一会话 1 个）空态=null",
+      "evidence": null
+    },
+    {
+      "id": "G4",
+      "ok": true,
+      "detail": "打开右侧栏后与面板重叠={\"worst\":0,\"rows\":[],\"right\":1280,\"win\":1280}（开前列底边 [32,840,125,840,125]）",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/G4-rightbar.png"
+    },
+    {
+      "id": "G5",
+      "ok": true,
+      "detail": "点击「收起侧边栏」后面板左缘 280→90，点击「打开侧边栏」后回到 280",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/G5-sidebar-collapsed.png"
+    },
+    {
+      "id": "H1",
+      "ok": true,
+      "detail": "快速开合 20 次后 open=true pressed=true 标签 1→1（起始 open=true）",
+      "evidence": null
+    },
+    {
+      "id": "H2",
+      "ok": true,
+      "detail": "交替快击后 标签=4 xterm=4 可见=1 空态=null，收敛用时=0ms",
+      "evidence": null
+    },
+    {
+      "id": "H3",
+      "ok": true,
+      "detail": "输出进行中关闭终端后新增错误=[]",
+      "evidence": null
+    },
+    {
+      "id": "H4",
+      "ok": true,
+      "detail": "收起期间的输出在 A7 验证（面板收起后仍写入 PTY，重开后完整呈现）",
+      "evidence": null
+    },
+    {
+      "id": "H5",
+      "ok": true,
+      "detail": "exit 后标记退出的标签=1 状态栏=终端已退出已退出",
+      "evidence": "/Users/<user>/Documents/code/dsh/dsh-plugins/repositories/dsh-plugin-terminal/docs/acceptance/2026-09-15/H5-shell-exit.png"
+    },
+    {
+      "id": "H13",
+      "ok": true,
+      "detail": "向已退出终端输入后新增错误=0 状态栏=终端已退出已退出",
+      "evidence": null
+    },
+    {
+      "id": "H14",
+      "ok": true,
+      "detail": "已退出终端的右侧状态标签=已退出",
+      "evidence": null
+    },
+    {
+      "id": "H9",
+      "ok": true,
+      "detail": "非法存储值：面板保持收起=true，重开后高度=161 合法=true",
+      "evidence": null
+    },
+    {
+      "id": "H7",
+      "ok": true,
+      "detail": "刷新前打印=true 重连后回放=true（用时 0ms）当前屏出现 1 次",
+      "evidence": null
+    },
+    {
+      "id": "H8",
+      "ok": true,
+      "detail": "刷新后 xterm 元素=1 标签=1 可见=1",
+      "evidence": null
+    },
+    {
+      "id": "H11",
+      "ok": true,
+      "detail": "10 万行输出：PTY 侧 707ms，屏幕追平 715ms，输出期间面板仍可收起/展开=true",
+      "evidence": null
+    },
+    {
+      "id": "H12",
+      "ok": true,
+      "detail": "超长单行横向溢出=0 面板底边=840/840 屏幕出现后续命令=true（48937ms，PTY 侧=false）",
+      "evidence": null
+    }
+  ],
+  "errors": [],
+  "session": "session-<id>",
+  "workspace": {
+    "key": "866c649db9a44b84413987452668e62d7ac06f546e15fb4a9c6600bd56903967",
+    "kind": "local",
+    "root": "/Users/<user>/.dsh-desktop/plain-sessions",
+    "label": "本机",
+    "readOnly": false
+  }
+}

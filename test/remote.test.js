@@ -93,3 +93,18 @@ test('remote session prevents concurrent sends and redacts token-shaped output',
   assert.equal(redactRemoteText('api-key=secret'), 'api-key=[redacted]');
   await session.close();
 });
+
+test('an exited session never reaches the pty handle again', async () => {
+  // Resizing the pty of a shell that already exited aborts the Host process, so
+  // the panel's reattach resize must be refused before it touches the handle.
+  const terminal = fakeTerminal();
+  const calls = [];
+  terminal.resize = (cols, rows) => { calls.push([cols, rows]); terminal.size = [cols, rows]; };
+  const session = new RemoteTerminalSession(terminal, {idleSilenceMs: 20, timeoutMs: 200});
+  assert.deepEqual(session.resize(90, 24), {resized: true});
+  assert.deepEqual(calls, [[90, 24]]);
+  await session.close();
+  assert.equal(session.status().kind, 'exited');
+  assert.deepEqual(session.resize(120, 40), {resized: false});
+  assert.deepEqual(calls, [[90, 24]]);
+});

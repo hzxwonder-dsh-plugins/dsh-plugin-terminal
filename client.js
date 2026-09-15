@@ -5,6 +5,9 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
   const STATE_KEY = 'dsh-plugin-terminal/dock';
   const MIN_HEIGHT = 160;
   const DEFAULT_HEIGHT = 320;
+  // The dock draws a one pixel top border, so the space it really takes from the
+  // columns is the stored height plus that border.
+  const DOCK_BORDER = 1;
   const MESSAGES = {
     TERMINAL_SESSION_REQUIRED: '会话不可用，请重新打开标签页',
     TERMINAL_WORKSPACE_CHANGED: '工作区已切换，请重试',
@@ -17,6 +20,8 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     TERMINAL_START_FAILED: '本机终端启动失败',
     REMOTE_TERMINAL_START_FAILED: '远程终端启动失败，请检查 SSH 配置',
     SSH_CONNECTION_NOT_FOUND: 'SSH 连接不可用',
+    REMOTE_TERMINAL_SESSION_CLOSED: '终端已退出',
+    TERMINAL_SESSION_CLOSED: '终端已退出',
   };
   const message = error => MESSAGES[error?.message] ?? error?.message ?? '终端请求失败';
 
@@ -138,7 +143,6 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
   const ICON_PATHS = {
     terminal: ['M3 4.3 6.2 7.5 3 10.7', 'M7.8 10.7h5.4'],
     plus: ['M8 3.4v9.2', 'M3.4 8h9.2'],
-    stop: ['M5.3 5.3h5.4v5.4H5.3z'],
     close: ['M4.6 4.6 11.4 11.4', 'M11.4 4.6 4.6 11.4'],
     chevron: ['M4.8 6.6 8 9.8l3.2-3.2'],
   };
@@ -172,6 +176,10 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
     const [offset, setOffset] = React.useState(0);
     const [connections, setConnections] = React.useState([]);
     const [sessions, setSessions] = React.useState([]);
+    // The attach path awaits the xterm asset, so it reads the tab list through a
+    // ref: by the time the await returns, state may already have dropped this tab.
+    const liveSessions = React.useRef([]);
+    React.useEffect(() => {liveSessions.current = sessions;}, [sessions]);
     const [active, setActive] = React.useState('');
     const [status, setStatus] = React.useState('');
     const [activity, setActivity] = React.useState('');
@@ -260,10 +268,10 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           const previous = floating
             ? {bottom: child.style.bottom}
             : {height: child.style.height, alignSelf: child.style.alignSelf, boxSizing: child.style.boxSizing};
-          if (floating) child.style.bottom = `${panelHeight}px`;
+          if (floating) child.style.bottom = `${panelHeight + DOCK_BORDER}px`;
           else {
             child.style.boxSizing = 'border-box';
-            child.style.height = `calc(100% - ${panelHeight}px)`;
+            child.style.height = `calc(100% - ${panelHeight + DOCK_BORDER}px)`;
             child.style.alignSelf = 'start';
           }
           reserved.set(child, previous);
@@ -347,6 +355,9 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
         try {
           const module = await loadAsset();
           if (controller.signal.aborted) return;
+          // The tab can be closed while the asset is still loading; building an
+          // xterm for it here would leave one nobody disposes.
+          if (!liveSessions.current.some(item => item.sessionId === id)) return;
           let entry = terminals.current.get(id);
           if (!entry) {
             const terminal = new module.Terminal({
@@ -374,7 +385,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
               return true;
             });
             entry = {
-              id, terminal, fit: fitAddon, cursor: 0, pumped: false, queue: Promise.resolve(),
+              id, terminal, fit: fitAddon, cursor: 0, pumped: false, exited: false, queue: Promise.resolve(),
               writes: new AbortController(), observer: undefined, themeObserver: undefined,
             };
             terminals.current.set(id, entry);
@@ -383,11 +394,17 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
             // rejected from then on — the terminal looks connected and refuses
             // to type.
             terminal.onData(text => {
-              if (workspace.current?.readOnly) return;
+              // A shell that has exited keeps its prompt on screen, so typing
+              // into it would only produce one refused request per keystroke.
+              if (workspace.current?.readOnly || entry.exited) return;
               const signal = entry.writes.signal;
               entry.queue = entry.queue
                 .then(() => call({terminalId: id, action: 'writeTerminal', text}, signal))
-                .catch(error => { if (!signal.aborted) report(error); });
+                .catch(error => {
+                  if (signal.aborted) return;
+                  if (String(error?.message).includes('SESSION_CLOSED')) { entry.exited = true; setStatus('终端已退出'); return; }
+                  report(error);
+                });
             });
             entry.themeObserver = new MutationObserver(() => {terminal.options.theme = themeFor(viewNode);});
             entry.themeObserver.observe(document.documentElement, {attributes: true});
@@ -395,15 +412,41 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           // Only the terminal on screen holds a box in the view. Stacked xterms
           // leave the inactive one showing and push the active one — the one
           // that takes the focus — below the dock, out of sight.
+          //
+          // The view box is recreated whenever the panel is collapsed and
+          // reopened, while these instances survive it, so an element that
+          // belongs to a previous box has to move back into the current one.
+          // Without that the terminal stays connected and typable while nothing
+          // of it is on screen.
+          // A terminal that is closed while its xterm is still loading leaves an
+          // element nobody owns behind, and a stray element still counts as
+          // visible: it pushes the live terminal out of the box. Only elements
+          // that belong to a terminal the panel still shows may stay.
+          const owned = new Set([...terminals.current.values()].map(item => item.terminal.element));
+          for (const node of [...viewNode.children]) {
+            if (node.classList?.contains('xterm') && !owned.has(node)) node.remove();
+          }
           for (const [key, item] of terminals.current) {
             const node = item.terminal.element;
-            if (node) node.style.display = key === id ? '' : 'none';
+            if (!node) continue;
+            const wanted = key === id;
+            if (node.parentElement !== viewNode) {
+              viewNode.appendChild(node);
+              item.terminal.refresh(0, item.terminal.rows - 1);
+            } else if (wanted && !item.shown) {
+              // A hidden terminal stops painting, so the rows it kept from an
+              // earlier visit are repainted only when it is asked to.
+              item.terminal.refresh(0, item.terminal.rows - 1);
+            }
+            item.shown = wanted;
+            node.style.display = wanted ? '' : 'none';
           }
           entry.terminal.focus();
           const fit = () => {
             if (!viewNode.clientWidth || !viewNode.clientHeight) return;
             entry.fit.fit();
-            if (!entry.pumped || workspace.current?.readOnly) return;
+            // No pty is left to size once the shell has exited.
+            if (!entry.pumped || entry.exited || workspace.current?.readOnly) return;
             void call({terminalId: id, action: 'resizeTerminal', cols: entry.terminal.cols, rows: entry.terminal.rows}, entry.writes.signal).catch(() => {});
           };
           entry.observer?.disconnect();
@@ -414,10 +457,23 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
               const result = await send({action: 'readTerminal', cursor: entry.cursor}, controller.signal);
               if (controller.signal.aborted) return;
               if (result.reset) entry.terminal.reset();
+              const first = !entry.pumped;
               entry.cursor = result.cursor;
               entry.pumped = true;
               if (result.text) await new Promise(resolve => entry.terminal.write(result.text, resolve));
-              if (result.status?.kind === 'exited') { setStatus('终端已退出'); return; }
+              // The first read is the earliest moment the panel knows this
+              // terminal is alive, and the fit before it could not size the PTY.
+              // Without this the shell keeps the size of whatever client sized it
+              // before until the container happens to be resized again.
+              if (first) fit();
+              if (result.status?.kind === 'exited') {
+                entry.exited = true;
+                setStatus('终端已退出');
+                // Mark the tab and the label from the stream itself instead of
+                // leaving them on the previous state until the next poll.
+                setSessions(old => old.map(item => (item.sessionId === id ? {...item, status: result.status} : item)));
+                return;
+              }
             } catch (error) {
               if (!controller.signal.aborted) report(error);
             }
@@ -458,7 +514,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
       performing.current = true;
       setBusy(true);
       setStatus('');
-      setActivity({openTerminal: '正在新建终端…', closeTerminal: '正在关闭终端…', signalTerminal: '正在发送中断信号…'}[args.action] ?? '');
+      setActivity({openTerminal: '正在新建终端…', closeTerminal: '正在关闭终端…'}[args.action] ?? '');
       // Every action but opening addresses one terminal, and the Host refuses a
       // request without that id.
       const scoped = args.action === 'openTerminal' ? args : {terminalId: active, ...args};
@@ -478,8 +534,6 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           closed?.terminal?.dispose();
           setSessions(old => old.filter(item => item.sessionId !== active));
           setActive('');
-        } else if (args.action === 'signalTerminal') {
-          setStatus('已发送中断信号');
         }
         return true;
       } catch (error) {
@@ -575,7 +629,6 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
           title: `终端跟随当前工作区：${location}`,
         }, location),
         button(glyph('plus'), '新建终端', busy || readOnly || unavailable, create),
-        button(glyph('stop'), '中断前台命令 (Ctrl+C)', busy || readOnly || !active, () => void perform({action: 'signalTerminal', signal: 'SIGINT'})),
         button(glyph('close'), '关闭当前终端', busy || readOnly || !active, () => void perform({action: 'closeTerminal'})),
         button(glyph('chevron'), '收起终端面板', false, () => updateDock({open: false}))),
       h('div', {className: 'dsh-term-body'},
@@ -583,7 +636,7 @@ window.__ModuleLoader__.load({id: 'dsh-plugin-terminal', factory: require => {
         !active && h('div', {className: 'dsh-term-empty'}, unavailable ? '当前工作区不可用' : '点击 + 新建终端')),
       h('div', {className: 'dsh-term-status'},
         h('span', null, status || activity || current?.cwd || (readOnly ? '只读模式' : '')),
-        h('span', null, readOnly ? '只读' : active ? '已连接' : '未连接')));
+        h('span', null, readOnly ? '只读' : !active ? '未连接' : current?.status?.kind === 'exited' ? '已退出' : '已连接')));
   }
 
   function apply(ctx) {

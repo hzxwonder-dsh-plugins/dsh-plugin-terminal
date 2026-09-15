@@ -325,6 +325,10 @@ export class RemoteTerminalSession {
 
   resize(cols, rows) {
     if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 2 || cols > 500 || rows < 1 || rows > 200) throw new Error('REMOTE_TERMINAL_INVALID_SIZE');
+    // A shell that has exited leaves a prompt on screen while its pty is gone:
+    // resizing that handle aborts the Host process outright, so a dead session
+    // answers like one without a resize-capable handle.
+    if (this.closed || this.exited) return {resized: false};
     // Harness local's owned node-pty handle supplies resize until the public contract exposes it.
     const handle = typeof this.terminal.resize === 'function' ? this.terminal : this.terminal.terminal;
     if (typeof handle?.resize !== 'function') return {resized: false};
