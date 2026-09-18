@@ -1,21 +1,9 @@
 # 截图来源
 
-本目录的图片用于 README 中的终端能力说明，来源可追溯且不包含凭据。
+本目录不再保存图片。此前收录的两张参考图都是在真实机器上采集的界面证据，
+画面里的终端回显包含本机与远端主机的用户名、家目录、内部主机名与私有工程目录，
+因此已从仓库移除，也不进入后续发布。
 
-| 文件 | 来源资产 | 用途与验证边界 |
-| --- | --- | --- |
-| `local-terminal.png` | `tests/web-check.mjs` disposable Harness Web fixture（早期采集） | 本机 PTY 执行验收；展示的是侧栏内嵌时期的布局，当前底部停靠布局以 `docs/e2e.md` 场景为准，并由 `tests/web-check.mjs` 的终端步骤重新采集 |
-| `remote-terminal.png` | PI-Desktop `docs/workbench-ssh/panels-evidence/ssh-terminal.png` | SSH 远程终端布局参考；不作为当前 DSH 运行态证明 |
-
-当前布局的复现方式：运行 `node tests/web-check.mjs`，其终端步骤会打开底部停靠面板、
-校验面板几何、执行 `printf 'terminal verified\n'` 并重写 `local-terminal.png`。
-
-文件 SHA-256：
-
-```text
-a305ff7e2227be0780bc6d2dceac4c9c9534315313f3dce653f40f39cfbdaf50  local-terminal.png
-a0c17e5b4924043b26aa126592b13ac5d10ed4782dd55e5c572ccd5b1d21720d  remote-terminal.png
-```
-
-这些资产展示的是已验证的交互目标。Terminal 插件自身的工具行为由仓库测试覆盖，
-真实 PTY 连接仍需用户的本机环境和授权。
+需要展示界面时，在干净环境按 `docs/e2e.md` 重新采集，并确认画面里不出现用户名、
+主机名与私有路径；面板行为结论本身以 `docs/acceptance/` 下的表格与
+`results.json` 为准。

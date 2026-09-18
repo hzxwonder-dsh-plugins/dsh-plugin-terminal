@@ -137,16 +137,14 @@ Workspace paths, file operations, and one-shot remote batch operations remain th
 responsibility of the Harness workspace service and `dsh-plugin-ssh`; a remote
 terminal is an explicit PTY session, not a local workspace.
 
-## Feature screenshots
+## Interface and acceptance evidence
 
-![Local PTY terminal reference](docs/screenshots/local-terminal.png)
-
-![Remote SSH terminal reference](docs/screenshots/remote-terminal.png)
-
-These are traceable PI-Desktop interaction references. See
-[`docs/screenshots/SOURCES.md`](docs/screenshots/SOURCES.md) for provenance and
-validation boundaries. They contain no passwords, private keys, tokens, or other
-credentials.
+The repository ships no interface screenshots: panel captures are taken on a real
+machine, where the terminal echo carries local and remote user names, home
+directories, and project paths that do not belong in a public repository. Layout,
+geometry, and interaction results live as text and data under
+[`docs/acceptance/`](docs/acceptance/), and `docs/e2e.md` describes how to capture
+them again on a clean machine.
 
 ## Security boundary
 

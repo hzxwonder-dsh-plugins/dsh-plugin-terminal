@@ -114,15 +114,12 @@ agent 工具终端属于 Agent。两者的会话 id 都带有 `local-pty-` 或 `
 工作区路径、文件读写和一次性远程批量操作仍分别由 Harness 工作区服务和
 `dsh-plugin-ssh` 负责；远程终端保持为显式 PTY 会话，不伪装成本地工作区。
 
-## 功能截图
+## 界面与验收证据
 
-![本机 PTY 终端参考](docs/screenshots/local-terminal.png)
-
-![远程 SSH 终端参考](docs/screenshots/remote-terminal.png)
-
-图片来自可复现的验收脚本或外部交互参考；来源和验证边界见
-[`docs/screenshots/SOURCES.md`](docs/screenshots/SOURCES.md)。截图不包含
-密码、私钥、Token 或其他凭据。
+仓库不保存界面截图：终端面板的截图在真实机器上采集，画面里的终端回显会带上本机
+与远端主机的用户名、家目录和工程路径，不适合随公开仓库发布。面板的布局、几何与
+交互结论以文字与数据形式保存在 [`docs/acceptance/`](docs/acceptance/)，
+`docs/e2e.md` 给出在干净环境重新采集的步骤。
 
 ## 安全边界
 
