@@ -9,16 +9,11 @@ when it knows the `sessionId`.
 
 ## Host support
 
-- Both hosts share one package, `dsh-plugin-terminal`: no desktop-only package or
-  code branch, no separate repository, and one implementation for both.
-- The dock and agent tools share one PTY manager: a local PTY runs via the host's
-  subprocess service wrapped by `sandboxPolicy`, an SSH PTY reuses `sshWorkbench`
-  workspace facts — host-agnostic official services, so both hosts behave the same.
-- The plugin uses only official services, slots, and patches; desktop-only
-  capability never enters the top-level `inject` — see [dsh-desktop plugin development](https://github.com/anywhere-labs/dsh-desktop/blob/master/docs/plugin-development.md).
-- A fresh DSH Desktop instance passed the terminal panel suite 66/66 in one round
-  (local and SSH workspaces, create and close, interrupt, reserved layout); the Web
-  host is covered by unit tests and `tests/web-check.mjs`.
+This repository targets the official [DeepSeek Harness Desktop](https://github.com/deepseek-ai/deepseek-harness). The integrated edition is maintained separately in [DSH Omni](https://github.com/hzxwonder/dsh-omni). Active maintenance covers these two desktop products.
+
+Compatibility is tracked against the official signed macOS arm64 **0.1.7-rc.2** build. See the [acceptance report and feature comparison](https://github.com/hzxwonder/dsh-omni/blob/main/docs/official-desktop-compatibility.md) for installation, activation, restart and functional results. Installation alone does not establish compatibility.
+
+Validate changes in DSH Omni, update its repository, then adapt and validate in official Desktop before publishing this plugin. Repeat real-device validation after each build.
 
 ## Features
 
