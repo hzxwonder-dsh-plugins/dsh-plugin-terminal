@@ -7,16 +7,22 @@ owner，其他 owner 即使知道 `sessionId` 也不能读取或操作。
 
 ## 宿主支持
 
-- 两端共用同一个包 `dsh-plugin-terminal`，没有桌面端专用包，也没有桌面端专属代码
-  分支；桌面端没有需要单独维护的仓库，两端由本仓库同一份实现维护。
-- 面板终端与 agent 工具终端共用同一个 PTY 管理器：本机 PTY 走宿主提供的 subprocess
-  服务并按 `sandboxPolicy` 包装，SSH PTY 复用 `sshWorkbench` 的工作区事实；这些都是
-  宿主无关的官方 service，因此在 Web 端与 Desktop 端行为一致。
-- 插件只依赖官方 service、slot 与 patch，桌面专属能力不放进顶层 `inject`，规范见
-  [dsh-desktop 插件开发文档](https://github.com/anywhere-labs/dsh-desktop/blob/master/docs/plugin-development.md)。
-- 桌面端已在 DSH Desktop 实例上用终端面板行为评测脚本实测，全新实例单轮 66/66
-  通过（本机与 SSH 工作区、新建与关闭、中断、退让布局）；Web 端由单元测试与
-  `tests/web-check.mjs` 覆盖。
+本仓库维护 [DeepSeek 官方 Desktop](https://github.com/deepseek-ai/deepseek-harness) 的独立适配插件。
+[DSH Omni](https://github.com/hzxwonder/dsh-omni) 的集成版由其 `vendor/` 单独维护。维护目标为这两个桌面产品，Web 端不再作为维护目标。
+
+### 官方 Desktop 验收
+
+2026-09-26，macOS arm64，官方签名的 DeepSeek Harness **0.1.7-rc.2**，通过应用插件管理页安装公开版本 **0.5.0**：安装和启用通过；底部面板和 SSH PTY 核心行为待验收。
+
+官方已有侧栏交互式终端、标签重命名、重连与后台进程。本插件提供底部停靠布局和自定义 SSH 工作区 PTY，权限模型也需要分别评估。
+
+[完整验收与官方功能对照](https://github.com/hzxwonder/dsh-omni/blob/main/docs/official-desktop-compatibility.md)。安装成功、组件运行与核心功能验收是不同阶段；兼容范围以实机报告为准。
+
+开发与发布顺序：DSH Omni 开发及实机验收 → 更新 Omni 仓库 → 官方 Desktop 适配及实机验收 → 发布本仓库。每次重新构建后重新实机验证。
+
+### 安装到官方 Desktop
+
+在官方应用中打开“插件 → 添加插件”，输入 `https://github.com/hzxwonder-dsh-plugins/dsh-plugin-terminal`。安装器通过兼容性检查后再启用；按照上面的验收状态决定是否在日常配置使用。
 
 ## 功能
 
