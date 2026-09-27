@@ -11,6 +11,10 @@ when it knows the `sessionId`.
 
 This repository targets the official [DeepSeek Harness Desktop](https://github.com/deepseek-ai/deepseek-harness). The integrated edition is maintained separately in [DSH Omni](https://github.com/hzxwonder/dsh-omni). Active maintenance covers these two desktop products.
 
+### Distribution
+
+This repository is the public adapter for the official DeepSeek Harness Desktop. [DSH Omni](https://github.com/hzxwonder/dsh-omni) integrates the pinned `vendor/dsh-plugin-terminal` snapshot. The two editions share terminal capability but are validated against their hosts independently; Web is no longer a maintenance target. See the [compatibility report](https://github.com/hzxwonder/dsh-omni/blob/main/docs/official-desktop-compatibility.md) for the current official Desktop result.
+
 Compatibility is tracked against the official signed macOS arm64 **0.1.7-rc.2** build. See the [acceptance report and feature comparison](https://github.com/hzxwonder/dsh-omni/blob/main/docs/official-desktop-compatibility.md) for installation, activation, restart and functional results. Installation alone does not establish compatibility.
 
 Validate changes in DSH Omni, update its repository, then adapt and validate in official Desktop before publishing this plugin. Repeat real-device validation after each build.

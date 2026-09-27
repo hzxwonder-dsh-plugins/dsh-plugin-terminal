@@ -24,6 +24,10 @@ owner，其他 owner 即使知道 `sessionId` 也不能读取或操作。
 
 在官方应用中打开“插件 → 添加插件”，输入 `https://github.com/hzxwonder-dsh-plugins/dsh-plugin-terminal`。安装器通过兼容性检查后再启用；按照上面的验收状态决定是否在日常配置使用。
 
+### 分发说明
+
+本仓库是官方 DeepSeek Harness Desktop 的公开适配版；[DSH Omni](https://github.com/hzxwonder/dsh-omni) 集成 `vendor/dsh-plugin-terminal` 固定快照。两套版本共享终端能力，但分别跟随宿主验收；Web 端不再作为维护目标。官方 Desktop 的当前结果见 [兼容性报告](https://github.com/hzxwonder/dsh-omni/blob/main/docs/official-desktop-compatibility.md)。
+
 ## 功能
 
 - 底部终端面板：点击会话标题栏右侧的终端按钮展开，面板占满左侧栏以外的整幅
